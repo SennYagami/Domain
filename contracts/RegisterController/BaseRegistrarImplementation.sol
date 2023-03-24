@@ -7,7 +7,7 @@ import "./token/ERC721/extensions/IERC721Enumerable.sol";
 import "./access/Ownable.sol";
 import "./utils/Strings.sol";
 
-contract BaseRegistrarImplementation is
+abstract contract BaseRegistrarImplementation is
     ERC721,
     IERC721Enumerable,
     IBaseRegistrar,
@@ -190,61 +190,88 @@ contract BaseRegistrarImplementation is
     }
 
     // Returns true iff the specified name is available for registration.
-    function available(uint256 id) public view override returns (bool) {
-        return expiries[id] + GRACE_PERIOD < block.timestamp;
-    }
+    function available(
+        string memory rootDomain,
+        string memory secondaryDomain
+    ) public view returns (bool) {}
 
     /**
      * @dev Register a name.
-     * @param id The token ID (keccak256 of the label).
+     * @param rootDomain The root domain name.
+     * @param secondaryDomain The secondary domain name.
      * @param owner The address that should own the registration.
      * @param duration Duration in seconds for the registration.
      */
     function register(
-        uint256 id,
+        string memory rootDomain,
+        string memory secondaryDomain,
         address owner,
         uint256 duration
-    ) external override returns (uint256) {
-        return _register(id, owner, duration, true);
+    ) external returns (uint256) {
+        return _register(rootDomain, secondaryDomain, owner, duration, true);
     }
 
     /**
      * @dev Register a name, without modifying the registry.
-     * @param id The token ID (keccak256 of the label).
+     * @param rootDomain The root domain name.
+     * @param secondaryDomain The secondary domain name.
      * @param owner The address that should own the registration.
      * @param duration Duration in seconds for the registration.
      */
     function registerOnly(
-        uint256 id,
+        string memory rootDomain,
+        string memory secondaryDomain,
         address owner,
         uint256 duration
     ) external returns (uint256) {
-        return _register(id, owner, duration, false);
+        return _register(rootDomain, secondaryDomain, owner, duration, false);
+    }
+
+    function getTokenId(
+        string memory rootName,
+        string memory secondaryName
+    ) public view returns (uint256 tokenId) {
+        bytes32 firstHash = keccak256(
+            abi.encode(address(0), keccak256(bytes(rootName)))
+        );
+
+        tokenId = uint256(
+            keccak256(abi.encode(firstHash, keccak256(bytes(secondaryName))))
+        );
     }
 
     function _register(
-        uint256 id,
+        string memory rootDomain,
+        string memory secondaryDomain,
         address owner,
         uint256 duration,
         bool updateRegistry
     ) internal live onlyController returns (uint256) {
-        require(available(id));
+        uint256 tokenId = getTokenId(rootDomain, secondaryDomain);
+
+        require(available(rootDomain, secondaryDomain));
         require(
             block.timestamp + duration + GRACE_PERIOD >
                 block.timestamp + GRACE_PERIOD
         ); // Prevent future overflow
 
-        expiries[id] = block.timestamp + duration;
-        if (_exists(id)) {
+        expiries[tokenId] = block.timestamp + duration;
+        if (_exists(tokenId)) {
             // Name was previously owned, and expired
-            _burn(id);
+            _burn(tokenId);
         }
-        _mint(owner, id);
+        _mint(owner, tokenId);
         if (updateRegistry) {
-            sid.setSubnodeOwner(baseNode, bytes32(id), owner);
+            sid.setSubnodeOwner(baseNode, bytes32(tokenId), owner);
         }
 
-        emit NameRegistered(id, owner, block.timestamp + duration);
+        emit NameRegistered(
+            rootDomain,
+            secondaryDomain,
+            tokenId,
+            owner,
+            block.timestamp + duration
+        );
 
         return block.timestamp + duration;
     }

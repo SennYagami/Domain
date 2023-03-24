@@ -8,13 +8,14 @@ interface ISidPriceOracle {
         uint256 usedPoint;
     }
 
-    function giftCardPriceInBNB(uint256[] memory ids, uint256[] memory amounts)
-        external
-        view
-        returns (Price calldata);
+    function giftCardPriceInBNB(
+        uint256[] memory ids,
+        uint256[] memory amounts
+    ) external view returns (Price calldata);
 
     function domainPriceInBNB(
-        string calldata name,
+        string calldata rootName,
+        string calldata secondaryName,
         uint256 expires,
         uint256 duration
     ) external view returns (Price calldata);

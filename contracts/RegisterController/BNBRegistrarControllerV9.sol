@@ -47,22 +47,30 @@ contract BNBRegistrarControllerV9 is Ownable {
     IReferralHub referralHub;
     uint256 public minCommitmentAge;
     uint256 public maxCommitmentAge;
+    address immutable resolver;
 
     mapping(bytes32 => uint256) public commitments;
 
+    error BadSignature();
+
+    struct WhitelistRegister {
+        address user;
+        uint256 secondaryDomainNameLength;
+        uint256 nonce;
+        uint256 duration;
+    }
+
+    mapping(uint256 => bool) whitelistUsed;
+
     event NameRegistered(
-        string name,
-        bytes32 indexed label,
+        string rootName,
+        string secondaryName,
+        uint256 indexed tokenId,
         address indexed owner,
         uint256 cost,
         uint256 expires
     );
-    event NameRenewed(
-        string name,
-        bytes32 indexed label,
-        uint256 cost,
-        uint256 expires
-    );
+    event NameRenewed(uint256 indexed tokenId, uint256 cost, uint256 expires);
     event NewPriceOracle(address indexed oracle);
 
     constructor(
@@ -70,7 +78,8 @@ contract BNBRegistrarControllerV9 is Ownable {
         ISidPriceOracle _prices,
         IReferralHub _referralHub,
         uint256 _minCommitmentAge,
-        uint256 _maxCommitmentAge
+        uint256 _maxCommitmentAge,
+        address resolverAddress
     ) {
         require(_maxCommitmentAge > _minCommitmentAge);
         base = _base;
@@ -78,31 +87,33 @@ contract BNBRegistrarControllerV9 is Ownable {
         referralHub = _referralHub;
         minCommitmentAge = _minCommitmentAge;
         maxCommitmentAge = _maxCommitmentAge;
+        resolver = resolverAddress;
     }
 
-    function rentPrice(
-        string memory name,
-        uint256 duration
-    ) public view returns (ISidPriceOracle.Price memory price) {
-        bytes32 label = keccak256(bytes(name));
-        price = prices.domainPriceInBNB(
-            name,
-            base.nameExpires(uint256(label)),
-            duration
+    function getTokenId(
+        string memory rootName,
+        string memory secondaryName
+    ) public pure returns (uint256 tokenId) {
+        bytes32 firstHash = keccak256(
+            abi.encode(address(0), keccak256(bytes(rootName)))
+        );
+
+        tokenId = uint256(
+            keccak256(abi.encode(firstHash, keccak256(bytes(secondaryName))))
         );
     }
 
-    function rentPriceWithPointRedemption(
-        string memory name,
-        uint256 duration,
-        address registerAddress
+    function rentPrice(
+        string memory rootName,
+        string memory secondaryName,
+        uint256 duration
     ) public view returns (ISidPriceOracle.Price memory price) {
-        bytes32 label = keccak256(bytes(name));
-        price = prices.domainPriceWithPointRedemptionInBNB(
-            name,
-            base.nameExpires(uint256(label)),
-            duration,
-            registerAddress
+        uint256 tokenId = getTokenId(rootName, secondaryName);
+        price = prices.domainPriceInBNB(
+            rootName,
+            secondaryName,
+            base.nameExpires(uint256(tokenId)),
+            duration
         );
     }
 
@@ -111,59 +122,57 @@ contract BNBRegistrarControllerV9 is Ownable {
         if (name.strlen() < 3) {
             return false;
         }
+
         bytes memory nb = bytes(name);
-        // zero width for /u200b /u200c /u200d and U+FEFF
-        for (uint256 i; i < nb.length - 2; i++) {
-            if (bytes1(nb[i]) == 0xe2 && bytes1(nb[i + 1]) == 0x80) {
-                if (
-                    bytes1(nb[i + 2]) == 0x8b ||
-                    bytes1(nb[i + 2]) == 0x8c ||
-                    bytes1(nb[i + 2]) == 0x8d
-                ) {
-                    return false;
-                }
-            } else if (bytes1(nb[i]) == 0xef) {
-                if (bytes1(nb[i + 1]) == 0xbb && bytes1(nb[i + 2]) == 0xbf)
-                    return false;
-            }
+
+        for (uint i; i < nb.length; i++) {
+            bytes1 char = nb[i];
+
+            if (
+                !(char >= 0x30 && char <= 0x39) && //9-0
+                !(char >= 0x41 && char <= 0x5A) && //A-Z
+                !(char >= 0x61 && char <= 0x7A) && //a-z
+                !(char == 0x2E) && //.
+                !(char == 0x5F) // _
+            ) return false;
         }
+
         return true;
     }
 
-    function available(string memory name) public view returns (bool) {
-        bytes32 label = keccak256(bytes(name));
-        return valid(name) && base.available(uint256(label));
+    function available(
+        string memory rootName,
+        string memory secondaryName
+    ) public view returns (bool) {
+        uint256 tokenId = getTokenId(rootName, secondaryName);
+        return valid(secondaryName) && base.available(rootName, secondaryName);
     }
 
     function makeCommitment(
-        string memory name,
+        string memory rootName,
+        string memory secondaryName,
         address owner,
         bytes32 secret
     ) public pure returns (bytes32) {
         return
             makeCommitmentWithConfig(
-                name,
+                rootName,
+                secondaryName,
                 owner,
                 secret,
-                address(0),
                 address(0)
             );
     }
 
     function makeCommitmentWithConfig(
-        string memory name,
+        string memory rootName,
+        string memory secondaryName,
         address owner,
         bytes32 secret,
-        address resolver,
         address addr
     ) public pure returns (bytes32) {
-        bytes32 label = keccak256(bytes(name));
-        if (resolver == address(0) && addr == address(0)) {
-            return keccak256(abi.encodePacked(label, owner, secret));
-        }
-        require(resolver != address(0));
-        return
-            keccak256(abi.encodePacked(label, owner, resolver, addr, secret));
+        uint256 tokenId = getTokenId(rootName, secondaryName);
+        return keccak256(abi.encodePacked(tokenId, owner, secret, addr));
     }
 
     function commit(bytes32 commitment) public {
@@ -172,57 +181,61 @@ contract BNBRegistrarControllerV9 is Ownable {
     }
 
     function register(
-        string calldata name,
+        string calldata rootName,
+        string calldata secondaryName,
         address owner,
         uint256 duration,
         bytes32 secret
     ) external payable {
         registerWithConfig(
-            name,
+            rootName,
+            secondaryName,
             owner,
             duration,
             secret,
-            address(0),
             address(0),
             bytes32(0)
         );
     }
 
     function registerWithConfig(
-        string memory name,
+        string memory rootName,
+        string memory secondaryName,
         address owner,
         uint256 duration,
         bytes32 secret,
-        address resolver,
         address addr,
         bytes32 nodehash
     ) public payable {
         bytes32 commitment = makeCommitmentWithConfig(
-            name,
+            rootName,
+            secondaryName,
             owner,
             secret,
-            resolver,
             addr
         );
 
-        uint256 cost = _consumeCommitment(name, duration, commitment);
+        uint256 cost = _consumeCommitment(
+            rootName,
+            secondaryName,
+            duration,
+            commitment
+        );
 
-        bytes32 label = keccak256(bytes(name));
-        uint256 tokenId = uint256(label);
+        uint256 tokenId = getTokenId(rootName, secondaryName);
 
         uint256 expires;
-        if (resolver != address(0)) {
+        if (addr != address(0)) {
             // Set this contract as the (temporary) owner, giving it
             // permission to set up the resolver.
-            expires = base.register(tokenId, address(this), duration);
-
-            // The nodehash of this label
-            bytes32 nodehash = keccak256(
-                abi.encodePacked(base.baseNode(), label)
+            expires = base.register(
+                rootName,
+                secondaryName,
+                address(this),
+                duration
             );
 
-            // Set the resolver
-            base.sid().setResolver(nodehash, resolver);
+            bytes32 nodeHash = bytes32(tokenId);
 
             // Configure the resolver
             if (addr != address(0)) {
@@ -233,11 +246,17 @@ contract BNBRegistrarControllerV9 is Ownable {
             base.reclaim(tokenId, owner);
             base.transferFrom(address(this), owner, tokenId);
         } else {
-            require(addr == address(0));
-            expires = base.register(tokenId, owner, duration);
+            expires = base.register(rootName, secondaryName, owner, duration);
         }
 
-        emit NameRegistered(name, label, owner, cost, expires);
+        emit NameRegistered(
+            rootName,
+            secondaryName,
+            tokenId,
+            owner,
+            cost,
+            expires
+        );
 
         //Check is eligible for referral program
         if (nodehash != bytes32(0)) {
@@ -260,22 +279,26 @@ contract BNBRegistrarControllerV9 is Ownable {
         }
     }
 
-    function renew(string calldata name, uint256 duration) public payable {
+    function renew(
+        string calldata rootName,
+        string calldata secondaryName,
+        uint256 duration
+    ) public payable {
         ISidPriceOracle.Price memory price;
 
-        price = rentPrice(name, duration);
+        price = rentPrice(rootName, secondaryName, duration);
 
         uint256 cost = (price.base + price.premium);
         require(msg.value >= cost);
-        bytes32 label = keccak256(bytes(name));
-        uint256 expires = base.renew(uint256(label), duration);
+        uint256 tokenId = getTokenId(rootName, secondaryName);
+        uint256 expires = base.renew(tokenId, duration);
 
         // Refund any extra payment
         if (msg.value > cost) {
             payable(msg.sender).transfer(msg.value - cost);
         }
 
-        emit NameRenewed(name, label, cost, expires);
+        emit NameRenewed(tokenId, cost, expires);
     }
 
     function setPriceOracle(ISidPriceOracle _prices) public onlyOwner {
@@ -305,7 +328,8 @@ contract BNBRegistrarControllerV9 is Ownable {
     }
 
     function _consumeCommitment(
-        string memory name,
+        string memory rootName,
+        string memory secondaryName,
         uint256 duration,
         bytes32 commitment
     ) internal returns (uint256) {
@@ -313,13 +337,107 @@ contract BNBRegistrarControllerV9 is Ownable {
         require(commitments[commitment] + minCommitmentAge <= block.timestamp);
         // If the commitment is too old, or the name is registered, stop
         require(commitments[commitment] + maxCommitmentAge > block.timestamp);
-        require(available(name));
+
+        require(available(rootName, secondaryName), "D205");
+
         delete (commitments[commitment]);
+
         ISidPriceOracle.Price memory price;
-        price = rentPrice(name, duration);
+        price = rentPrice(rootName, secondaryName, duration);
+
         uint256 cost = (price.base + price.premium);
         require(duration >= MIN_REGISTRATION_DURATION);
         require(msg.value >= cost);
         return cost;
+    }
+
+    function whitelistRegister(
+        bytes calldata message,
+        bytes calldata signature,
+        string memory rootName,
+        string memory secondaryName,
+        address addr
+    ) public {
+        // Declare r, s, and v signature parameters.
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
+        bytes32 hash = keccak256(message);
+
+        if (signature.length == 65) {
+            (r, s) = abi.decode(signature, (bytes32, bytes32));
+            v = uint8(signature[64]);
+
+            // Ensure v value is properly formatted.
+            if (v != 27 && v != 28) {
+                revert BadSignature();
+            }
+        } else {
+            revert BadSignature();
+        }
+
+        address signer = ecrecover(hash, v, r, s);
+        require(signer == owner(), "D201");
+
+        WhitelistRegister memory whitelistRegister = abi.decode(
+            message,
+            (WhitelistRegister)
+        );
+
+        require(whitelistUsed[whitelistRegister.nonce] == false, "D202");
+        whitelistUsed[whitelistRegister.nonce] = true;
+
+        address user = whitelistRegister.user;
+        require(_msgSender() == user, "D203");
+
+        require(
+            secondaryName.strlen() ==
+                whitelistRegister.secondaryDomainNameLength,
+            "D204"
+        );
+
+        require(available(rootName, secondaryName), "D205");
+
+        uint256 tokenId = getTokenId(rootName, secondaryName);
+
+        uint256 expires;
+        if (addr != address(0)) {
+            // Set this contract as the (temporary) owner, giving it
+            // permission to set up the resolver.
+            expires = base.register(
+                rootName,
+                secondaryName,
+                address(this),
+                whitelistRegister.duration
+            );
+
+            bytes32 nodeHash = bytes32(tokenId);
+
+            // Configure the resolver
+            if (addr != address(0)) {
+                Resolver(resolver).setAddr(nodeHash, addr);
+            }
+
+            // Now transfer full ownership to the expeceted owner
+            base.reclaim(tokenId, _msgSender());
+            base.transferFrom(address(this), _msgSender(), tokenId);
+        } else {
+            expires = base.register(
+                rootName,
+                secondaryName,
+                _msgSender(),
+                whitelistRegister.duration
+            );
+        }
+
+        emit NameRegistered(
+            rootName,
+            secondaryName,
+            tokenId,
+            _msgSender(),
+            0,
+            expires
+        );
     }
 }

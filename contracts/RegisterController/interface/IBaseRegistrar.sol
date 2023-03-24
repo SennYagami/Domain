@@ -11,7 +11,9 @@ interface IBaseRegistrar is IERC721 {
         uint256 expires
     );
     event NameRegistered(
-        uint256 indexed id,
+        string rootName,
+        string secondaryName,
+        uint256 indexed tokenId,
         address indexed owner,
         uint256 expires
     );
