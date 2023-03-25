@@ -14,8 +14,8 @@ abstract contract PubkeyResolver is ResolverBase {
     mapping(bytes32=>PublicKey) pubkeys;
 
     /**
-     * Sets the SECP256k1 public key associated with an ENS node.
-     * @param node The ENS node to query
+     * Sets the SECP256k1 public key associated with an DONS node.
+     * @param node The DONS node to query
      * @param x the X coordinate of the curve point for the public key.
      * @param y the Y coordinate of the curve point for the public key.
      */
@@ -25,9 +25,9 @@ abstract contract PubkeyResolver is ResolverBase {
     }
 
     /**
-     * Returns the SECP256k1 public key associated with an ENS node.
+     * Returns the SECP256k1 public key associated with an DONS node.
      * Defined in EIP 619.
-     * @param node The ENS node to query
+     * @param node The DONS node to query
      * @return x The X coordinate of the curve point for the public key.
      * @return y The Y coordinate of the curve point for the public key.
      */

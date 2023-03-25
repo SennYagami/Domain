@@ -9,8 +9,8 @@ abstract contract TextResolver is ResolverBase {
     mapping(bytes32=>mapping(string=>string)) texts;
 
     /**
-     * Sets the text data associated with an ENS node and key.
-     * May only be called by the owner of that node in the ENS registry.
+     * Sets the text data associated with an DONS node and key.
+     * May only be called by the owner of that node in the DONS registry.
      * @param node The node to update.
      * @param key The key to set.
      * @param value The text data value to set.
@@ -21,8 +21,8 @@ abstract contract TextResolver is ResolverBase {
     }
 
     /**
-     * Returns the text data associated with an ENS node and key.
-     * @param node The ENS node to query.
+     * Returns the text data associated with an DONS node and key.
+     * @param node The DONS node to query.
      * @param key The text data key to query.
      * @return The associated text data.
      */
