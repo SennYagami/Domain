@@ -20,6 +20,14 @@ interface DONS {
         bool approved
     );
 
+    event NewSubRootDomainCreator(
+        bytes32 indexed creator,
+        string indexed subRootDomain
+    );
+
+    event ControllerAdded(address indexed controller);
+    event ControllerRemoved(address indexed controller);
+
     function setRecord(
         bytes32 node,
         address owner,
@@ -61,4 +69,19 @@ interface DONS {
         external
         view
         returns (bool);
+    
+    function addController(address controller) external;
+    function removeController(address controller) external;
+
+    function setSubRootDomainCreator(
+        string memory subRootDomain,
+        bytes32 node
+    ) external;
+
+    function getSubRootDomainCreator(
+        string memory subRootDomain
+    ) external view returns (bytes32);
+
+    // check if the root domain has been registered
+    function checkRootDomainValidity(string memory rootDomainName) external view returns (bool);
 }
