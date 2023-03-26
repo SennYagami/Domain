@@ -32,6 +32,19 @@ describe("Basic test", function () {
   });
 
   describe("register", function () {
-    it("Should commitment equals", async function () {});
+    it("commit", async function () {});
+    it("registerWithConfig", async function () {});
+  });
+
+  describe("renew", function () {
+    it("", async function () {});
+  });
+
+  describe("rentPrice", function () {
+    it("", async function () {});
+  });
+
+  describe("available", function () {
+    it("", async function () {});
   });
 });
