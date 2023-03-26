@@ -27,8 +27,11 @@ describe("TEST", function () {
 
         const [owner, userAddr] = await hre.ethers.getSigners();
         const Registrar = await hre.ethers.getContractFactory("Registrar");
-        const registrar = await Registrar.deploy(ENS);
-        await registrar.deployed()
+        const registrar0 = await hre.upgrades.deployProxy(Registrar, {kind: 'uups'})
+        await registrar0.deployed();
+        const registrar = await hre.ethers.getContractAt("Registrar", registrar0.address)
+        await registrar.initializeRegistrar(ENS);
+
         expect(owner.address == registrar.owner());
 
         return {registrar, owner, userAddr};
