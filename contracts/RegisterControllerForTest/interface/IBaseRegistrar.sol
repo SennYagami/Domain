@@ -11,13 +11,13 @@ interface IBaseRegistrar is IERC721 {
         uint256 expires
     );
     event NameRegistered(
-        string rootDomainName,
-        string secondaryDomainName,
+        string rootName,
+        string secondaryName,
+        uint256 indexed tokenId,
         address indexed owner,
         uint256 expires
     );
-
-    event NameRenewed(uint256 tokenId, uint256 expires);
+    event NameRenewed(uint256 indexed id, uint256 expires);
 
     // Authorises a controller, who can register and renew domains.
     function addController(address controller) external;
@@ -25,30 +25,25 @@ interface IBaseRegistrar is IERC721 {
     // Revoke controller permission for an address.
     function removeController(address controller) external;
 
+    // Set the resolver for the TLD this registrar manages.
+    function setResolver(address resolver) external;
+
     // Returns the expiration timestamp of the specified label hash.
     function nameExpires(uint256 id) external view returns (uint256);
 
     // Returns true iff the specified name is available for registration.
-    function available(
-        string memory rootDomain,
-        string memory secondaryDomain
-    ) external view returns (bool);
+    function available(uint256 id) external view returns (bool);
 
     /**
      * @dev Register a name.
      */
     function register(
-        string memory rootDomainName,
-        string memory secondaryDomainName,
+        uint256 id,
         address owner,
-        uint duration
+        uint256 duration
     ) external returns (uint256);
 
-    function renew(
-        string memory rootDomainName,
-        string memory secondaryDomainName,
-        uint duration
-    ) external returns (uint256);
+    function renew(uint256 id, uint256 duration) external returns (uint256);
 
     /**
      * @dev Reclaim ownership of a name in SID, if you own it in the registrar.

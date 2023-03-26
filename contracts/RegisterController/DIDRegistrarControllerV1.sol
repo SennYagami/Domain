@@ -5,8 +5,8 @@ import "./BaseRegistrarImplementation.sol";
 import "./utils/StringUtils.sol";
 import "./resolvers/Resolver.sol";
 import "./referral/IReferralHub.sol";
-import "./price-oracle/ISidPriceOracle.sol";
-import "./interface/IBNBRegistrarController.sol";
+import "./price-oracle/IDidPriceOracle.sol";
+import "./interface/IDidRegistrarController.sol";
 import "./access/Ownable.sol";
 import "./utils/introspection/IERC165.sol";
 import "./utils/Address.sol";
@@ -15,7 +15,7 @@ import "./utils/Address.sol";
  * @dev Registrar with giftcard support
  *
  */
-contract BNBRegistrarControllerV9 is Ownable {
+contract DIDRegistrarControllerV1 is Ownable {
     using StringUtils for *;
 
     uint256 public constant MIN_REGISTRATION_DURATION = 365 days;
@@ -43,7 +43,7 @@ contract BNBRegistrarControllerV9 is Ownable {
         );
 
     BaseRegistrarImplementation base;
-    ISidPriceOracle prices;
+    IDidPriceOracle prices;
     IReferralHub referralHub;
     uint256 public minCommitmentAge;
     uint256 public maxCommitmentAge;
@@ -75,7 +75,7 @@ contract BNBRegistrarControllerV9 is Ownable {
 
     constructor(
         BaseRegistrarImplementation _base,
-        ISidPriceOracle _prices,
+        IDidPriceOracle _prices,
         IReferralHub _referralHub,
         uint256 _minCommitmentAge,
         uint256 _maxCommitmentAge,
@@ -107,9 +107,9 @@ contract BNBRegistrarControllerV9 is Ownable {
         string memory rootName,
         string memory secondaryName,
         uint256 duration
-    ) public view returns (ISidPriceOracle.Price memory price) {
+    ) public view returns (IDidPriceOracle.Price memory price) {
         uint256 tokenId = getTokenId(rootName, secondaryName);
-        price = prices.domainPriceInBNB(
+        price = prices.domainPriceInMatic(
             rootName,
             secondaryName,
             base.nameExpires(uint256(tokenId)),
@@ -141,16 +141,16 @@ contract BNBRegistrarControllerV9 is Ownable {
     }
 
     function available(
-        string memory rootName,
-        string memory secondaryName
+        string calldata rootName,
+        string calldata secondaryName
     ) public view returns (bool) {
         uint256 tokenId = getTokenId(rootName, secondaryName);
         return valid(secondaryName) && base.available(rootName, secondaryName);
     }
 
     function makeCommitment(
-        string memory rootName,
-        string memory secondaryName,
+        string calldata rootName,
+        string calldata secondaryName,
         address owner,
         bytes32 secret
     ) public pure returns (bytes32) {
@@ -165,8 +165,8 @@ contract BNBRegistrarControllerV9 is Ownable {
     }
 
     function makeCommitmentWithConfig(
-        string memory rootName,
-        string memory secondaryName,
+        string calldata rootName,
+        string calldata secondaryName,
         address owner,
         bytes32 secret,
         address addr
@@ -284,7 +284,7 @@ contract BNBRegistrarControllerV9 is Ownable {
         string calldata secondaryName,
         uint256 duration
     ) public payable {
-        ISidPriceOracle.Price memory price;
+        IDidPriceOracle.Price memory price;
 
         price = rentPrice(rootName, secondaryName, duration);
 
@@ -301,7 +301,7 @@ contract BNBRegistrarControllerV9 is Ownable {
         emit NameRenewed(tokenId, cost, expires);
     }
 
-    function setPriceOracle(ISidPriceOracle _prices) public onlyOwner {
+    function setPriceOracle(IDidPriceOracle _prices) public onlyOwner {
         prices = _prices;
         emit NewPriceOracle(address(prices));
     }
@@ -342,7 +342,7 @@ contract BNBRegistrarControllerV9 is Ownable {
 
         delete (commitments[commitment]);
 
-        ISidPriceOracle.Price memory price;
+        IDidPriceOracle.Price memory price;
         price = rentPrice(rootName, secondaryName, duration);
 
         uint256 cost = (price.base + price.premium);

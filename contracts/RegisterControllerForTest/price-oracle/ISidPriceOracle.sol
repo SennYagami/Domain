@@ -5,7 +5,6 @@ interface ISidPriceOracle {
     struct Price {
         uint256 base;
         uint256 premium;
-        uint256 usedPoint;
     }
 
     function giftCardPriceInBNB(
