@@ -15,8 +15,6 @@ contract DidPriceOracle is IDidPriceOracle, Ownable {
 
     // Oracle address
     AggregatorInterface public immutable usdOracle;
-    SidGiftCardLedger public immutable ledger;
-    SidGiftCardVoucher public immutable voucher;
 
     constructor(AggregatorInterface _usdOracle) {
         usdOracle = _usdOracle;
