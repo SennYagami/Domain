@@ -1,6 +1,6 @@
 pragma solidity >=0.8.4;
 
-interface DONS {
+interface DIDNS {
 
     // Logged when the owner of a node transfers ownership to a new account.
     event Transfer(bytes32 indexed node, address owner);
@@ -16,8 +16,11 @@ interface DONS {
 
     function owner(bytes32 node) external view returns (address);
 
-    function addController(address controller) external;
-    function removeController(address controller) external;
+    function addOwnerController(address controller) external;
+    function removeOwnerController(address controller) external;
+
+    function addCreatorController(address controller) external;
+    function removeCreatorController(address controller) external;
 
     function setSubRootDomainCreator(
         string calldata subRootDomain,

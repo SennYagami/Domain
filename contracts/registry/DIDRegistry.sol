@@ -2,43 +2,50 @@ pragma solidity >=0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./DONS.sol";
+import "./DIDNS.sol";
 
 /**
- * The DO registry contract.
+ * The DID registry contract.
  */
-contract DORegistry is DONS, Initializable, OwnableUpgradeable {
+contract DIDRegistry is DIDNS, Initializable, OwnableUpgradeable {
     struct Record {
         address owner;
     }
 
     mapping(bytes32 => Record) records;
-    mapping(address => bool) public controllers;
-    mapping(string => bytes32) subRootDomainCreator; // .jay => nodehash(jay.do)
+    mapping(address => bool) public ownerControllers;
+    mapping(string => bytes32) subRootDomainCreator; // .jay => nodehash(jay.did)
+    mapping(address => bool) public creatorControllers;
+    address resolver;
 
-    modifier onlyController() {
-        require(controllers[msg.sender]);
+    modifier onlyOwnerController() {
+        require(ownerControllers[msg.sender]);
+        _;
+    }
+
+    modifier onlyCreatorController() {
+        require(creatorControllers[msg.sender]);
         _;
     }
 
     /**
-     * @dev Constructs a new DO registry.
+     * @dev Constructs a new DID registry.
      */
     // constructor() public {
     //     records[0x0].owner = msg.sender;
     // }
 
     function initialize() public initializer {
-        __DO_init();
+        __DID_init();
     }
 
-    function __DO_init() internal onlyInitializing {
+    function __DID_init() internal onlyInitializing {
         __Ownable_init();
-        __DO_init_unchained();
+        __DID_init_unchained();
     }
 
-    function __DO_init_unchained() internal onlyInitializing {
-        subRootDomainCreator["do"] = keccak256("do");
+    function __DID_init_unchained() internal onlyInitializing {
+        subRootDomainCreator["did"] = keccak256("did");
     }
 
     /**
@@ -49,7 +56,7 @@ contract DORegistry is DONS, Initializable, OwnableUpgradeable {
     function setOwner(
         bytes32 node,
         address owner
-    ) public virtual override onlyController {
+    ) public virtual override onlyOwnerController {
         records[node].owner = owner;
         emit Transfer(node, owner);
     }
@@ -71,23 +78,45 @@ contract DORegistry is DONS, Initializable, OwnableUpgradeable {
     }
 
     // Authorises a controller, who can register and renew domains.
-    function addController(address controller) external override onlyOwner {
+    function addOwnerController(
+        address controller
+    ) external override onlyOwner {
         require(controller != address(0), "address can not be zero!");
-        controllers[controller] = true;
+        ownerControllers[controller] = true;
         emit ControllerAdded(controller);
     }
 
     // Revoke controller permission for an address.
-    function removeController(address controller) external override onlyOwner {
+    function removeOwnerController(
+        address controller
+    ) external override onlyOwner {
         require(controller != address(0), "address can not be zero!");
-        controllers[controller] = false;
+        ownerControllers[controller] = false;
+        emit ControllerRemoved(controller);
+    }
+
+    // Authorises a controller, who can register and renew domains.
+    function addCreatorController(
+        address controller
+    ) external override onlyOwner {
+        require(controller != address(0), "address can not be zero!");
+        creatorControllers[controller] = true;
+        emit ControllerAdded(controller);
+    }
+
+    // Revoke controller permission for an address.
+    function removeCreatorController(
+        address controller
+    ) external override onlyOwner {
+        require(controller != address(0), "address can not be zero!");
+        creatorControllers[controller] = false;
         emit ControllerRemoved(controller);
     }
 
     function setSubRootDomainCreator(
         string calldata subRootDomain,
         bytes32 node
-    ) external onlyController {
+    ) external onlyCreatorController {
         subRootDomainCreator[subRootDomain] = node;
         emit NewSubRootDomainCreator(node, subRootDomain);
     }
@@ -102,5 +131,9 @@ contract DORegistry is DONS, Initializable, OwnableUpgradeable {
         string calldata rootDomain
     ) external view returns (bool) {
         return subRootDomainCreator[rootDomain] != bytes32(0);
+    }
+
+    function setResolver(address _resolver) external onlyOwner {
+        resolver = _resolver;
     }
 }
