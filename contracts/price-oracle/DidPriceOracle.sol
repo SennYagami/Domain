@@ -30,7 +30,7 @@ contract DidPriceOracle is IDidPriceOracle, Ownable {
         uint256 duration
     ) external view returns (IDidPriceOracle.Price memory) {
         uint256 rootLen = rootName.strlen();
-        uint256 secondaryLen = rootName.strlen();
+        uint256 secondaryLen = secondaryName.strlen();
         if (secondaryLen < 3 || rootLen == 0) {
             return IDidPriceOracle.Price({base: 0, premium: 0});
         }
