@@ -2,12 +2,12 @@ pragma solidity >=0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./DIDNS.sol";
+import "./DID.sol";
 
 /**
  * The DID registry contract.
  */
-contract DIDRegistry is DIDNS, Initializable, OwnableUpgradeable {
+contract DIDRegistry is DID, Initializable, OwnableUpgradeable {
     struct Record {
         address owner;
     }
@@ -83,7 +83,7 @@ contract DIDRegistry is DIDNS, Initializable, OwnableUpgradeable {
     ) external override onlyOwner {
         require(controller != address(0), "address can not be zero!");
         ownerControllers[controller] = true;
-        emit ControllerAdded(controller);
+        emit OwnerControllerAdded(controller);
     }
 
     // Revoke controller permission for an address.
@@ -92,7 +92,7 @@ contract DIDRegistry is DIDNS, Initializable, OwnableUpgradeable {
     ) external override onlyOwner {
         require(controller != address(0), "address can not be zero!");
         ownerControllers[controller] = false;
-        emit ControllerRemoved(controller);
+        emit OwnerControllerRemoved(controller);
     }
 
     // Authorises a controller, who can register and renew domains.
@@ -101,7 +101,7 @@ contract DIDRegistry is DIDNS, Initializable, OwnableUpgradeable {
     ) external override onlyOwner {
         require(controller != address(0), "address can not be zero!");
         creatorControllers[controller] = true;
-        emit ControllerAdded(controller);
+        emit CreatorControllerAdded(controller);
     }
 
     // Revoke controller permission for an address.
@@ -110,7 +110,7 @@ contract DIDRegistry is DIDNS, Initializable, OwnableUpgradeable {
     ) external override onlyOwner {
         require(controller != address(0), "address can not be zero!");
         creatorControllers[controller] = false;
-        emit ControllerRemoved(controller);
+        emit CreatorControllerRemoved(controller);
     }
 
     function setSubRootDomainCreator(
