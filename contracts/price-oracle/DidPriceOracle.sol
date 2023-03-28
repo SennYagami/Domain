@@ -9,12 +9,16 @@ contract DidPriceOracle is IDidPriceOracle, Ownable {
     using StringUtils for *;
     //price in USD per second
     // one year = 31556952 seconds
-    uint256 private constant price3Letter = 20597680029427; // 640$ per year 
-    uint256 private constant price4Letter = 5070198161089; // 160$ per year
-    uint256 private constant price5Letter = 158443692534; // 5$ per year
+    uint256 public price3Letter = 20597680029427; // 640$ per year 
+    uint256 public price4Letter = 5070198161089; // 160$ per year
+    uint256 public price5Letter = 158443692534; // 5$ per year
 
     // Oracle address
     AggregatorInterface public immutable usdOracle;
+
+    event SetPrice3Letter(uint256 price3Letter);
+    event SetPrice4Letter(uint256 price4Letter);
+    event SetPrice5Letter(uint256 price5Letter);
 
     constructor(AggregatorInterface _usdOracle) {
         usdOracle = _usdOracle;
@@ -44,5 +48,20 @@ contract DidPriceOracle is IDidPriceOracle, Ownable {
     function attoUSDToWei(uint256 amount) internal view returns (uint256) {
         uint256 maticPrice = uint256(usdOracle.latestAnswer());
         return (amount * 1e8) / maticPrice;
+    }
+
+    function setPrice3Letter(uint256 _price3Letter) external onlyOwner {
+        price3Letter = _price3Letter;
+        emit SetPrice3Letter(_price3Letter);
+    }
+
+    function setPrice4Letter(uint256 _price4Letter) external onlyOwner {
+        price4Letter = _price4Letter;
+        emit SetPrice4Letter(_price4Letter);
+    }
+
+    function setPrice5Letter(uint256 _price5Letter) external onlyOwner {
+        price5Letter = _price5Letter;
+        emit SetPrice5Letter(_price5Letter);
     }
 }
