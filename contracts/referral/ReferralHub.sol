@@ -70,6 +70,11 @@ contract ReferralHub is IReferralHub, Ownable {
         AddrResolver resolver = AddrResolver(resolverAddress);
         address resolvedAddress = resolver.addr(nodeHash);
 
+        address acceptAddress = resolver.commissionAcceptAddress(nodeHash);
+        if (acceptAddress != address(0)) {
+            resolvedAddress = acceptAddress;
+        }
+
         return (true, resolvedAddress);
     }
 
