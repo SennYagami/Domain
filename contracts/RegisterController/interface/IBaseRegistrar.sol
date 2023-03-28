@@ -1,4 +1,4 @@
-import "../registry/SID.sol";
+import "../registry/DID.sol";
 import "./IBaseRegistrar.sol";
 import "../interface/IERC721.sol";
 

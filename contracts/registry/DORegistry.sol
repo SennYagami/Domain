@@ -7,7 +7,7 @@ import "./DONS.sol";
 /**
  * The DO registry contract.
  */
-contract DORegistry is DONS,  Initializable,OwnableUpgradeable {
+contract DORegistry is DONS, Initializable, OwnableUpgradeable {
     struct Record {
         address owner;
     }
@@ -15,7 +15,6 @@ contract DORegistry is DONS,  Initializable,OwnableUpgradeable {
     mapping(bytes32 => Record) records;
     mapping(address => bool) public controllers;
     mapping(string => bytes32) subRootDomainCreator; // .jay => nodehash(jay.do)
-
 
     modifier onlyController() {
         require(controllers[msg.sender]);
@@ -50,7 +49,7 @@ contract DORegistry is DONS,  Initializable,OwnableUpgradeable {
     function setOwner(
         bytes32 node,
         address owner
-    ) public virtual override onlyController{
+    ) public virtual override onlyController {
         records[node].owner = owner;
         emit Transfer(node, owner);
     }

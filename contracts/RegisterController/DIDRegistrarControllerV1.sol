@@ -10,6 +10,7 @@ import "./interface/IDidRegistrarController.sol";
 import "./access/Ownable.sol";
 import "./utils/introspection/IERC165.sol";
 import "./utils/Address.sol";
+import "hardhat/console.sol";
 
 /**
  * @dev Registrar with giftcard support
@@ -18,27 +19,33 @@ import "./utils/Address.sol";
 contract DIDRegistrarControllerV1 is Ownable {
     using StringUtils for *;
 
+    // keccak256(
+    //     "EIP712Domain(uint256 chainId,address verifyingContract)"
+    // );
+    bytes32 private constant DOMAIN_SEPARATOR_TYPEHASH =
+        0x47e79534a245952e8b16893a336b85a3d9ea9fa8c573f3d803afb92a79469218;
+
     uint256 public constant MIN_REGISTRATION_DURATION = 365 days;
 
     bytes4 private constant INTERFACE_META_ID =
         bytes4(keccak256("supportsInterface(bytes4)"));
     bytes4 private constant COMMITMENT_CONTROLLER_ID =
         bytes4(
-            keccak256("rentPrice(string,uint256)") ^
-                keccak256("available(string)") ^
-                keccak256("makeCommitment(string,address,bytes32)") ^
+            keccak256("rentPrice(string,string,uint256)") ^
+                keccak256("available(string,string)") ^
+                keccak256("makeCommitment(string,string,address,bytes32)") ^
                 keccak256("commit(bytes32)") ^
-                keccak256("register(string,address,uint256,bytes32)") ^
-                keccak256("renew(string,uint256)")
+                keccak256("register(string,string,address,uint256,bytes32)") ^
+                keccak256("renew(string,string,uint256)")
         );
 
     bytes4 private constant COMMITMENT_WITH_CONFIG_CONTROLLER_ID =
         bytes4(
             keccak256(
-                "registerWithConfig(string,address,uint256,bytes32,address,address)"
+                "registerWithConfig(string,string,address,uint256,bytes32,address,bytes32)"
             ) ^
                 keccak256(
-                    "makeCommitmentWithConfig(string,address,bytes32,address,address)"
+                    "makeCommitmentWithConfig(string,string,address,bytes32,address)"
                 )
         );
 
@@ -53,11 +60,13 @@ contract DIDRegistrarControllerV1 is Ownable {
 
     error BadSignature();
 
-    struct WhitelistRegister {
-        address user;
-        uint256 secondaryDomainNameLength;
+    struct WhitelistInfo {
+        address userAddress;
+        string rootName;
+        uint256 secondaryNameLength;
         uint256 nonce;
         uint256 duration;
+        bytes signature;
     }
 
     mapping(uint256 => bool) whitelistUsed;
@@ -141,8 +150,8 @@ contract DIDRegistrarControllerV1 is Ownable {
     }
 
     function available(
-        string calldata rootName,
-        string calldata secondaryName
+        string memory rootName,
+        string memory secondaryName
     ) public view returns (bool) {
         uint256 tokenId = getTokenId(rootName, secondaryName);
         return valid(secondaryName) && base.available(rootName, secondaryName);
@@ -199,8 +208,8 @@ contract DIDRegistrarControllerV1 is Ownable {
     }
 
     function registerWithConfig(
-        string memory rootName,
-        string memory secondaryName,
+        string calldata rootName,
+        string calldata secondaryName,
         address owner,
         uint256 duration,
         bytes32 secret,
@@ -239,7 +248,7 @@ contract DIDRegistrarControllerV1 is Ownable {
 
             // Configure the resolver
             if (addr != address(0)) {
-                Resolver(resolver).setAddr(nodehash, addr);
+                Resolver(resolver).setAddr(nodeHash, addr);
             }
 
             // Now transfer full ownership to the expeceted owner
@@ -328,8 +337,8 @@ contract DIDRegistrarControllerV1 is Ownable {
     }
 
     function _consumeCommitment(
-        string memory rootName,
-        string memory secondaryName,
+        string calldata rootName,
+        string calldata secondaryName,
         uint256 duration,
         bytes32 commitment
     ) internal returns (uint256) {
@@ -351,23 +360,41 @@ contract DIDRegistrarControllerV1 is Ownable {
         return cost;
     }
 
-    function whitelistRegister(
-        bytes calldata message,
-        bytes calldata signature,
-        string memory rootName,
-        string memory secondaryName,
-        address addr
-    ) public {
+    function recoverSigner(
+        WhitelistInfo memory whitelistInfo
+    ) internal view returns (address) {
         // Declare r, s, and v signature parameters.
         bytes32 r;
         bytes32 s;
         uint8 v;
 
-        bytes32 hash = keccak256(message);
+        bytes32 msgHash = keccak256(
+            abi.encode(
+                DOMAIN_SEPARATOR_TYPEHASH,
+                whitelistInfo.userAddress,
+                whitelistInfo.rootName,
+                whitelistInfo.secondaryNameLength,
+                whitelistInfo.nonce,
+                whitelistInfo.duration
+            )
+        );
 
-        if (signature.length == 65) {
-            (r, s) = abi.decode(signature, (bytes32, bytes32));
-            v = uint8(signature[64]);
+        bytes32 dataHash = keccak256(
+            abi.encodePacked(
+                bytes1(0x19),
+                bytes1(0x01),
+                domainSeparator(),
+                msgHash
+            )
+        );
+
+        bytes32 sigHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash)
+        );
+
+        if (whitelistInfo.signature.length == 65) {
+            (r, s) = abi.decode(whitelistInfo.signature, (bytes32, bytes32));
+            v = uint8(whitelistInfo.signature[64]);
 
             // Ensure v value is properly formatted.
             if (v != 27 && v != 28) {
@@ -377,39 +404,47 @@ contract DIDRegistrarControllerV1 is Ownable {
             revert BadSignature();
         }
 
-        address signer = ecrecover(hash, v, r, s);
+        address signer = ecrecover(sigHash, v, r, s);
+
+        return signer;
+    }
+
+    function whitelistRegister(
+        bytes calldata msg,
+        string calldata secondaryName,
+        address addr
+    ) public {
+        WhitelistInfo memory whitelistInfo = abi.decode(msg, (WhitelistInfo));
+
+        address signer = recoverSigner(whitelistInfo);
+
+        console.logAddress(signer);
         require(signer == owner(), "D201");
 
-        WhitelistRegister memory whitelistRegister = abi.decode(
-            message,
-            (WhitelistRegister)
-        );
+        require(whitelistUsed[whitelistInfo.nonce] == false, "D202");
+        whitelistUsed[whitelistInfo.nonce] = true;
 
-        require(whitelistUsed[whitelistRegister.nonce] == false, "D202");
-        whitelistUsed[whitelistRegister.nonce] = true;
-
-        address user = whitelistRegister.user;
+        address user = whitelistInfo.userAddress;
         require(_msgSender() == user, "D203");
 
         require(
-            secondaryName.strlen() ==
-                whitelistRegister.secondaryDomainNameLength,
+            secondaryName.strlen() == whitelistInfo.secondaryNameLength,
             "D204"
         );
 
-        require(available(rootName, secondaryName), "D205");
+        require(available(whitelistInfo.rootName, secondaryName), "D205");
 
-        uint256 tokenId = getTokenId(rootName, secondaryName);
+        uint256 tokenId = getTokenId(whitelistInfo.rootName, secondaryName);
 
         uint256 expires;
         if (addr != address(0)) {
             // Set this contract as the (temporary) owner, giving it
             // permission to set up the resolver.
             expires = base.register(
-                rootName,
+                whitelistInfo.rootName,
                 secondaryName,
                 address(this),
-                whitelistRegister.duration
+                whitelistInfo.duration
             );
 
             bytes32 nodeHash = bytes32(tokenId);
@@ -424,20 +459,37 @@ contract DIDRegistrarControllerV1 is Ownable {
             base.transferFrom(address(this), _msgSender(), tokenId);
         } else {
             expires = base.register(
-                rootName,
+                whitelistInfo.rootName,
                 secondaryName,
                 _msgSender(),
-                whitelistRegister.duration
+                whitelistInfo.duration
             );
         }
 
         emit NameRegistered(
-            rootName,
+            whitelistInfo.rootName,
             secondaryName,
             tokenId,
             _msgSender(),
             0,
             expires
         );
+    }
+
+    /// @dev Returns the chain id used by this contract.
+    function getChainId() public view returns (uint256) {
+        uint256 id;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            id := chainid()
+        }
+        return id;
+    }
+
+    function domainSeparator() public view returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(DOMAIN_SEPARATOR_TYPEHASH, getChainId(), this)
+            );
     }
 }
