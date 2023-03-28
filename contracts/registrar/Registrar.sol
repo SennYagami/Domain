@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: NO LICENSE
 pragma solidity ^0.8.17;
 
-
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "./IRegistrar.sol";
 import "./IRegistry.sol";
@@ -14,7 +14,7 @@ import "../utils/StringUtils.sol";
 error NameNotAvailable(string name);
 error DurationTooShort(uint256 duration);
 
-contract Registrar is IRegistrar, ERC721, Ownable, ERC20Recoverable  {
+contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSUpgradeable, ERC721Upgradeable, IRegistrar {
 
     //using StringUtils for string;
 
@@ -52,8 +52,11 @@ contract Registrar is IRegistrar, ERC721, Ownable, ERC20Recoverable  {
         isApprovedForAll(owner, spender));
     }
 
-    constructor(address _ens) ERC721("", "") {
+    function initializeRegistrar(address _ens) public initializer {
         ENS = _ens;
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+        __ERC721_init("", "");
     }
 
     modifier onlyController() {
@@ -119,7 +122,7 @@ contract Registrar is IRegistrar, ERC721, Ownable, ERC20Recoverable  {
 
     function supportsInterface(
         bytes4 interfaceID
-    ) public pure override(ERC721, IERC165) returns (bool) {
+    ) public pure override(IERC165Upgradeable, ERC721Upgradeable) returns (bool) {
         return
         interfaceID == INTERFACE_META_ID ||
         interfaceID == ERC721_ID ||
@@ -164,6 +167,8 @@ contract Registrar is IRegistrar, ERC721, Ownable, ERC20Recoverable  {
         // Not available if it's registered here or in its grace period.
         return expiries[id] + GRACE_PERIOD < block.timestamp;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
 
 }

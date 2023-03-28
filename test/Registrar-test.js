@@ -73,8 +73,14 @@ describe("TEST", function () {
     let iface = new hre.ethers.utils.Interface(eventAbi);
     let log = iface.parseLog(event); // here you can add your own logic to find the correct log
 
-    return log.args;
-  }
+        const [owner, userAddr] = await hre.ethers.getSigners();
+        const Registrar = await hre.ethers.getContractFactory("Registrar");
+        const registrar0 = await hre.upgrades.deployProxy(Registrar, {kind: 'uups'})
+        await registrar0.deployed();
+        const registrar = await hre.ethers.getContractAt("Registrar", registrar0.address)
+        await registrar.initializeRegistrar(ENS);
+
+        expect(owner.address == registrar.owner());
 
   describe("Registrar-test", function () {
     it("addController", async function () {

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: NO LICENSE
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
 struct Domain {
     string rootDomainName;
     string secondaryDomainName;
 }
 
-interface IRegistrar is IERC721{
+interface IRegistrar is IERC721Upgradeable{
 
     event NameRegistered(string rootDomainName, string secondaryDomainName,
         address indexed owner, uint256 expires);
