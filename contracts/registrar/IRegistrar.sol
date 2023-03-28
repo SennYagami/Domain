@@ -13,8 +13,7 @@ interface IRegistrar is IERC721Upgradeable{
     event NameRegistered(string rootDomainName, string secondaryDomainName,
         address indexed owner, uint256 expires);
 
-    event NameRenewed(string rootDomainName, string secondaryDomainName,
-        uint256 expires);
+    event NameRenewed(uint256 tokenId, uint256 expires);
 
     event ControllerAdded(address indexed controller);
     event ControllerRemoved(address indexed controller);
@@ -31,8 +30,7 @@ interface IRegistrar is IERC721Upgradeable{
     function register(string memory rootDomainName, string memory secondaryDomainName,
         address owner, uint256 duration) external;
 
-    function renew(string memory rootDomainName, string memory secondaryDomainName,
-        uint256 duration) external;
+    function renew(uint256 tokenId, uint256 duration) external;
 
     function available(string memory rootDomain, string memory secondaryDomain)
         external pure returns (bool);

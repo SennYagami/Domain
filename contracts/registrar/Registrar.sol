@@ -23,6 +23,7 @@ contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSU
     // The ENS registry
     address public ENS;
 
+    mapping(string => bool) domain2isProtected;
 
     // A map of addresses that are authorised to register and renew names.
     mapping(address => bool) public controllers;
@@ -64,15 +65,19 @@ contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSU
         _;
     }
 
+    function setProtectedDomain(string memory domain, bool isProtected) external onlyOwner {
+        domain2isProtected[domain] = isProtected;
+    }
+
     function available(string memory rootDomain, string memory secondaryDomain)
         external pure returns (bool) {
-        return (_calTokenId(rootDomain, secondaryDomain) != 0);
+        return (calTokenId(rootDomain, secondaryDomain) != 0);
     }
 
     function ownerOf(
         string memory rootDomain, string memory secondaryDomain
     ) public view returns (address) {
-        uint256 tokenId = _calTokenId(rootDomain, secondaryDomain);
+        uint256 tokenId = calTokenId(rootDomain, secondaryDomain);
         require(expiries[tokenId] > block.timestamp);
         return super.ownerOf(tokenId);
     }
@@ -88,7 +93,7 @@ contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSU
     }
 
     function nameExpires(string memory rootDomain, string memory secondaryDomain) public view override returns (uint256) {
-        return expiries[_calTokenId(rootDomain, secondaryDomain)];
+        return expiries[calTokenId(rootDomain, secondaryDomain)];
     }
 
     function register(string memory rootDomainName, string memory secondaryDomainName,
@@ -101,9 +106,7 @@ contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSU
         _register(rootDomainName, secondaryDomainName, owner, duration, false);
     }
 
-    function renew(string memory rootDomainName, string memory secondaryDomainName, uint256 duration) external onlyController {
-
-        uint256 tokenId = _calTokenId(rootDomainName, secondaryDomainName);
+    function renew(uint256 tokenId, uint256 duration) external onlyController {
 
         require(expiries[tokenId] + GRACE_PERIOD >= block.timestamp); // Name must be registered here or in grace period
         require(
@@ -111,13 +114,13 @@ contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSU
         );
 
         expiries[tokenId] += duration;
-        emit NameRenewed(rootDomainName, secondaryDomainName, expiries[tokenId]);
+        emit NameRenewed(tokenId, expiries[tokenId]);
     }
 
     function reclaim(string memory rootDomain, string memory secondaryDomain, address owner) external {
-        uint256 tokenId = _calTokenId(rootDomain, secondaryDomain);
+        uint256 tokenId = calTokenId(rootDomain, secondaryDomain);
         require(_isApprovedOrOwner(msg.sender, tokenId));
-        IRegistry(ENS).setOwner(tokenId, owner);
+        IRegistry(ENS).setOwner(bytes32(tokenId), owner);
     }
 
     function supportsInterface(
@@ -129,7 +132,7 @@ contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSU
         interfaceID == RECLAIM_ID;
     }
 
-    function _calTokenId(string memory rootDomainName, string memory secondaryDomainName) internal pure returns(uint256 tokenId) {
+    function calTokenId(string memory rootDomainName, string memory secondaryDomainName) public pure returns(uint256 tokenId) {
         bytes32 firstHash = keccak256(abi.encode(address(0), keccak256(bytes(rootDomainName))));
         tokenId = uint256(keccak256(abi.encode(firstHash, keccak256(bytes(secondaryDomainName)))));
     }
@@ -137,9 +140,10 @@ contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSU
     function _register(string memory rootDomainName, string memory secondaryDomainName,
         address owner, uint256 duration, bool updateRegistry) internal onlyController {
 
+        require(!domain2isProtected[rootDomainName], "ROOT_DOMAIN_IS_PROTECTED");
         require(IRegistry(ENS).checkRootDomainValidity(rootDomainName), "INVALID_ROOT_DOMAIN");
 
-        uint256 tokenId = _calTokenId(rootDomainName, secondaryDomainName);
+        uint256 tokenId = calTokenId(rootDomainName, secondaryDomainName);
         require(_available(tokenId), "TOKEN_ID_IS_UNAVAILABLE");
 
         require(
@@ -157,7 +161,7 @@ contract Registrar is Initializable, OwnableUpgradeable, ERC20Recoverable, UUPSU
         _mint(owner, tokenId);
 
         if (updateRegistry) {
-            IRegistry(ENS).setOwner(tokenId, owner);
+            IRegistry(ENS).setOwner(bytes32(tokenId), owner);
         }
 
         emit NameRegistered(rootDomainName, secondaryDomainName, owner, expiry);

@@ -9,7 +9,7 @@ contract MockRegistry is IRegistry{
         return true;
     }
 
-    function setOwner(uint256 tokenId, address owner) external {
+    function setOwner(bytes32 tokenId, address owner) external {
 
     }
 }

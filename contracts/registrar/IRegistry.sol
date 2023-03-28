@@ -4,6 +4,6 @@ pragma solidity ^0.8.17;
 interface IRegistry {
     function checkRootDomainValidity(string memory rootDomainName) external returns(bool);
 
-    function setOwner(uint256 tokenId, address owner) external;
+    function setOwner(bytes32 tokenId, address owner) external;
 
 }
