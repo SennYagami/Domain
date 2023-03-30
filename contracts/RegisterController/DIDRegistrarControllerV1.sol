@@ -118,12 +118,7 @@ contract DIDRegistrarControllerV1 is Ownable {
         uint256 duration
     ) public view returns (IDidPriceOracle.Price memory price) {
         uint256 tokenId = getTokenId(rootName, secondaryName);
-        price = prices.domainPriceInMatic(
-            rootName,
-            secondaryName,
-            base.nameExpires(uint256(tokenId)),
-            duration
-        );
+        price = prices.domainPriceInMatic(rootName, secondaryName, duration);
     }
 
     function valid(string memory name) public pure returns (bool) {
@@ -139,10 +134,7 @@ contract DIDRegistrarControllerV1 is Ownable {
 
             if (
                 !(char >= 0x30 && char <= 0x39) && //9-0
-                !(char >= 0x41 && char <= 0x5A) && //A-Z
-                !(char >= 0x61 && char <= 0x7A) && //a-z
-                !(char == 0x2E) && //.
-                !(char == 0x5F) // _
+                !(char >= 0x61 && char <= 0x7A) //a-z
             ) return false;
         }
 
@@ -236,7 +228,7 @@ contract DIDRegistrarControllerV1 is Ownable {
         if (addr != address(0)) {
             // Set this contract as the (temporary) owner, giving it
             // permission to set up the resolver.
-            expires = base.register(
+            expires = base.registerOnly(
                 rootName,
                 secondaryName,
                 address(this),
