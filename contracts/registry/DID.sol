@@ -13,10 +13,11 @@ interface DID {
 
     event CreatorControllerAdded(address indexed controller);
     event CreatorControllerRemoved(address indexed controller);
+    event NewResolver(address indexed resolver);
 
     function setOwner(bytes32 node, address owner) external;
 
-    function owner(bytes32 node) external view returns (address);
+    function getOwner(bytes32 node) external view returns (address);
 
     function addOwnerController(address controller) external;
 

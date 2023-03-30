@@ -16,7 +16,7 @@ contract DIDRegistry is DID, Initializable, OwnableUpgradeable {
     mapping(address => bool) public ownerControllers;
     mapping(string => bytes32) subRootDomainCreator; // .jay => nodehash(jay.did)
     mapping(address => bool) public creatorControllers;
-    address resolver;
+    address public resolver;
 
     modifier onlyOwnerController() {
         require(ownerControllers[msg.sender]);
@@ -45,7 +45,9 @@ contract DIDRegistry is DID, Initializable, OwnableUpgradeable {
     }
 
     function __DID_init_unchained() internal onlyInitializing {
-        subRootDomainCreator["did"] = keccak256("did");
+        bytes32 node=keccak256("did");
+        subRootDomainCreator["did"] = node;
+        emit NewSubRootDomainCreator(node, "did");
     }
 
     /**
@@ -66,7 +68,7 @@ contract DIDRegistry is DID, Initializable, OwnableUpgradeable {
      * @param node The specified node.
      * @return address of the owner.
      */
-    function owner(
+    function getOwner(
         bytes32 node
     ) public view virtual override returns (address) {
         address addr = records[node].owner;
@@ -130,10 +132,11 @@ contract DIDRegistry is DID, Initializable, OwnableUpgradeable {
     function checkRootDomainValidity(
         string calldata rootDomain
     ) external view returns (bool) {
-        return subRootDomainCreator[rootDomain] != bytes32(0);
+        return subRootDomainCreator[rootDomain] == bytes32(0);
     }
 
     function setResolver(address _resolver) external onlyOwner {
         resolver = _resolver;
+        emit NewResolver(_resolver);
     }
 }
