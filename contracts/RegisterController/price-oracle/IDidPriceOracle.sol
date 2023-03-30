@@ -10,7 +10,6 @@ interface IDidPriceOracle {
     function domainPriceInMatic(
         string calldata rootName,
         string calldata secondaryName,
-        uint256 expires,
         uint256 duration
     ) external view returns (Price calldata);
 }
