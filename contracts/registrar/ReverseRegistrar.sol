@@ -30,7 +30,7 @@ contract ReverseRegistrar is Ownable,  IReverseRegistrar {
 
         // Assign ownership of the reverse record to our deployer
         ReverseRegistrar oldRegistrar = ReverseRegistrar(
-            didAddr.owner(ADDR_REVERSE_NODE)
+            didAddr.getOwner(ADDR_REVERSE_NODE)
         );
         if (address(oldRegistrar) != address(0x0)) {
             oldRegistrar.claim(msg.sender);

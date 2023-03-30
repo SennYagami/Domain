@@ -30,7 +30,7 @@ contract PublicResolver is ABIResolver, AddrResolver, ContentHashResolver, DNSRe
     }
 
     function isAuthorised(bytes32 node) internal override view returns(bool) {
-        address owner = did.owner(node);
+        address owner = did.getOwner(node);
         return owner == msg.sender || authorisations[node][owner][msg.sender];
     }
 

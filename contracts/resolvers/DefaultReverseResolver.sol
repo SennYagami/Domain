@@ -11,7 +11,7 @@ contract DefaultReverseResolver {
 
   
     modifier onlyOwner(bytes32 node) {
-        require(msg.sender == did.owner(node));
+        require(msg.sender == did.getOwner(node));
         _;
     }
 

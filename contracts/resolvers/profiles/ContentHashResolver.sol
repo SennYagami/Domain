@@ -9,8 +9,8 @@ abstract contract ContentHashResolver is ResolverBase {
     mapping(bytes32=>bytes) hashes;
 
     /**
-     * Sets the contenthash associated with an DONS node.
-     * May only be called by the owner of that node in the DONS registry.
+     * Sets the contenthash associated with an DID node.
+     * May only be called by the owner of that node in the DID registry.
      * @param node The node to update.
      * @param hash The contenthash to set
      */
@@ -21,7 +21,7 @@ abstract contract ContentHashResolver is ResolverBase {
 
     /**
      * Returns the contenthash associated with an DONS node.
-     * @param node The DONS node to query.
+     * @param node The DID node to query.
      * @return The associated contenthash.
      */
     function contenthash(bytes32 node) external view returns (bytes memory) {

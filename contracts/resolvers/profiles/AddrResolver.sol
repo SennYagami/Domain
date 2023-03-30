@@ -12,8 +12,8 @@ abstract contract AddrResolver is ResolverBase {
     mapping(bytes32=>mapping(uint=>bytes)) _addresses;
 
     /**
-     * Sets the address associated with an DONS node.
-     * May only be called by the owner of that node in the DONS registry.
+     * Sets the address associated with an DID node.
+     * May only be called by the owner of that node in the DID registry.
      * @param node The node to update.
      * @param a The address to set.
      */
@@ -23,7 +23,7 @@ abstract contract AddrResolver is ResolverBase {
 
     /**
      * Returns the address associated with an DONS node.
-     * @param node The DONS node to query.
+     * @param node The DID node to query.
      * @return The associated address.
      */
     function addr(bytes32 node) public view returns (address payable) {

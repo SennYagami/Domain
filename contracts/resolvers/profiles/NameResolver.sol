@@ -9,8 +9,8 @@ abstract contract NameResolver is ResolverBase {
     mapping(bytes32=>string) names;
 
     /**
-     * Sets the name associated with an DONS node, for reverse records.
-     * May only be called by the owner of that node in the DONS registry.
+     * Sets the name associated with an DID node, for reverse records.
+     * May only be called by the owner of that node in the DID registry.
      * @param node The node to update.
      * @param name The name to set.
      */
@@ -20,9 +20,9 @@ abstract contract NameResolver is ResolverBase {
     }
 
     /**
-     * Returns the name associated with an DONS node, for reverse records.
+     * Returns the name associated with an DID node, for reverse records.
      * Defined in EIP181.
-     * @param node The DONS node to query.
+     * @param node The DID node to query.
      * @return The associated name.
      */
     function name(bytes32 node) external view returns (string memory) {

@@ -9,7 +9,7 @@ abstract contract ABIResolver is ResolverBase {
     mapping(bytes32=>mapping(uint256=>bytes)) abis;
 
     /**
-     * Sets the ABI associated with an DONS node.
+     * Sets the ABI associated with an DID node.
      * Nodes may have one ABI of each content type. To remove an ABI, set it to
      * the empty string.
      * @param node The node to update.
