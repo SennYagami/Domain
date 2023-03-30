@@ -153,7 +153,6 @@ contract DIDRegistrarControllerV1 is Ownable {
         string memory rootName,
         string memory secondaryName
     ) public view returns (bool) {
-        uint256 tokenId = getTokenId(rootName, secondaryName);
         return valid(secondaryName) && base.available(rootName, secondaryName);
     }
 
@@ -344,6 +343,7 @@ contract DIDRegistrarControllerV1 is Ownable {
     ) internal returns (uint256) {
         // Require a valid commitment
         require(commitments[commitment] + minCommitmentAge <= block.timestamp);
+
         // If the commitment is too old, or the name is registered, stop
         require(commitments[commitment] + maxCommitmentAge > block.timestamp);
 
@@ -410,11 +410,14 @@ contract DIDRegistrarControllerV1 is Ownable {
     }
 
     function whitelistRegister(
-        bytes calldata msg,
+        bytes calldata whietlistMsg,
         string calldata secondaryName,
         address addr
     ) public {
-        WhitelistInfo memory whitelistInfo = abi.decode(msg, (WhitelistInfo));
+        WhitelistInfo memory whitelistInfo = abi.decode(
+            whietlistMsg,
+            (WhitelistInfo)
+        );
 
         address signer = recoverSigner(whitelistInfo);
 
@@ -424,8 +427,8 @@ contract DIDRegistrarControllerV1 is Ownable {
         require(whitelistUsed[whitelistInfo.nonce] == false, "D202");
         whitelistUsed[whitelistInfo.nonce] = true;
 
-        address user = whitelistInfo.userAddress;
-        require(_msgSender() == user, "D203");
+        address userAddress = whitelistInfo.userAddress;
+        require(_msgSender() == userAddress, "D203");
 
         require(
             secondaryName.strlen() == whitelistInfo.secondaryNameLength,
