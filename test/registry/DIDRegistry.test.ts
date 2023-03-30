@@ -37,7 +37,7 @@ describe("TestRegistry", function () {
 
     it("setOwner should be wrong if not OwnerController", async function () {
         const node = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("jay"))
-        expect(contract.connect(account1).setOwner(node, addres1)).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(contract.connect(account1).setOwner(node, addres1)).to.be.revertedWithoutReason();
     })
 
     it("setOwner should be ok", async function () {
@@ -50,7 +50,7 @@ describe("TestRegistry", function () {
     })
 
     it("addOwnerController should be wrong if not owner", async function () {
-        expect(contract.connect(account1).addOwnerController(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(contract.connect(account1).addOwnerController(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
     })
 
     it("addOwnerController should be ok", async function () {
@@ -61,7 +61,7 @@ describe("TestRegistry", function () {
     })
 
     it("removeOwnerController should be wrong if not owner", async function () {
-        expect(contract.connect(account1).removeOwnerController(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(contract.connect(account1).removeOwnerController(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
     })
 
     it("removeOwnerController should be ok", async function () {
@@ -73,7 +73,7 @@ describe("TestRegistry", function () {
     })
 
     it("addCreatorController should be wrong if not owner", async function () {
-        expect(contract.connect(account1).addCreatorController(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(contract.connect(account1).addCreatorController(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
     })
 
     it("addCreatorController should be ok", async function () {
@@ -84,7 +84,7 @@ describe("TestRegistry", function () {
     })
 
     it("removeCreatorController should be wrong if not owner", async function () {
-        expect(contract.connect(account1).removeCreatorController(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(contract.connect(account1).removeCreatorController(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
     })
 
     it("removeCreatorController should be ok", async function () {
@@ -97,7 +97,7 @@ describe("TestRegistry", function () {
 
     it("setSubRootDomainCreator should be wrong if not owner", async function () {
         const node = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("did"))
-        expect(contract.connect(account1).setSubRootDomainCreator("jay", node)).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(contract.connect(account1).setSubRootDomainCreator("jay", node)).to.be.revertedWithoutReason();
     })
 
     it("setSubRootDomainCreator should be ok", async function () {
@@ -112,9 +112,9 @@ describe("TestRegistry", function () {
     })
 
     it("setRegistry should be wrong if not creatorController", async function () {
-        expect(contract.connect(account1).setResolver(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(contract.connect(account1).setResolver(addres1)).to.be.revertedWith("Ownable: caller is not the owner");
     })
-    
+
     it("setRegistry should be ok", async function () {
         await contract.setResolver(addres1);
         const value = await contract.resolver();
