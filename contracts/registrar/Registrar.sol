@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./IRegistrar.sol";
 import "./IRegistry.sol";
 import "../utils/ERC20Recoverable.sol";
-import "../utils/StringUtils.sol";
+import "../common/StringUtils.sol";
 
 error NameNotAvailable(string name);
 error DurationTooShort(uint256 duration);

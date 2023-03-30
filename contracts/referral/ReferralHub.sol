@@ -3,9 +3,10 @@ pragma solidity >=0.8.4;
 
 import "./IReferralHub.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../registry/DID.sol";
+import "../registry/DIDRegistry.sol";
 import "../resolvers/profiles/AddrResolver.sol";
 import "../resolvers/profiles/NameResolver.sol";
+import "../resolvers/profiles/CommissonResolver.sol";
 
 contract ReferralHub is IReferralHub, Ownable {
     // ReferralHub controllers that can update referral count and related states.
@@ -29,9 +30,9 @@ contract ReferralHub is IReferralHub, Ownable {
     // Map partner's domain's nodehash to customized commission rate.
     mapping(bytes32 => Comission) public partnerComissionCharts;
 
-    DID immutable did;
+    DIDRegistry immutable did;
 
-    constructor(DID _did) {
+    constructor(DIDRegistry _did) {
         did = _did;
         comissionCharts[1] = Comission(0, 5, 0);
         comissionCharts[2] = Comission(30, 10, 0);
@@ -62,14 +63,15 @@ contract ReferralHub is IReferralHub, Ownable {
     }
 
     function isReferralEligible(bytes32 nodeHash) external view override returns (bool, address) {
-        address resolverAddress = did.getResolver();
+        address resolverAddress = did.resolver();
         if (resolverAddress == address(0)) {
             return (false, address(0));
         }
         AddrResolver resolver = AddrResolver(resolverAddress);
         address resolvedAddress = resolver.addr(nodeHash);
 
-        address acceptAddress = resolver.commissionAcceptAddress(nodeHash);
+        CommissonResolver commisson_resolver = CommissonResolver(resolverAddress);
+        address acceptAddress = commisson_resolver.commissionAcceptAddress(nodeHash);
         if (acceptAddress != address(0)) {
             resolvedAddress = acceptAddress;
         }

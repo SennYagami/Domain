@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 
 import "./BaseRegistrarImplementation.sol";
-import "./utils/StringUtils.sol";
+import "../common/StringUtils.sol";
 import "./resolvers/Resolver.sol";
 import "./referral/IReferralHub.sol";
 import "./price-oracle/IDidPriceOracle.sol";
